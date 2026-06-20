@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  mehram:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mehram-video-generator
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - VIDEO_OUTPUT_DIR=/app/output
+      - DB_PATH=/app/data/mehram.db
+      - DB_BACKUP_PATH=/app/data/backups
+      - LOG_LEVEL=info
+    volumes:
+      - mehram_output:/app/output
+      - mehram_data:/app/data
+    restart: unless-stopped
+    networks:
+      - mehram_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: mehram-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - mehram
+    restart: unless-stopped
+    networks:
+      - mehram_network
+
+volumes:
+  mehram_output:
+    driver: local
+  mehram_data:
+    driver: local
+
+networks:
+  mehram_network:
+    driver: bridge
